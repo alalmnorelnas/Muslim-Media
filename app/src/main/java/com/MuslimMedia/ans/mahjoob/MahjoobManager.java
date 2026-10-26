@@ -83,9 +83,9 @@ public final class MahjoobManager {
 				configuredTarget = target;
 				configuredStrict = strict;
 				initializationError = null;
+				state = State.LOADING;
 				readiness.countDown();
 				readiness = new CountDownLatch(1);
-				state = State.LOADING;
 				TargetGender selectedTarget = target;
 				boolean strictMode = strict;
 				long version = ++configurationVersion;
@@ -139,7 +139,10 @@ public final class MahjoobManager {
 			if (activeGuard == null) {
 				return null;
 			}
-			return cacheKey == null ? activeGuard.check(bitmap) : activeGuard.check(bitmap, cacheKey);
+			Decision decision = cacheKey == null
+					? activeGuard.check(bitmap)
+					: activeGuard.check(bitmap, cacheKey);
+			return state == State.READY && guard == activeGuard ? decision : null;
 		}
 	}
 
