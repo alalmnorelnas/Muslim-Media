@@ -57,6 +57,8 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout.OnRefreshListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.MuslimMedia.ans.mahjoob.MahjoobManager;
+import com.MuslimMedia.ans.mahjoob.MahjoobSettings;
 import java.io.*;
 import java.text.*;
 import java.text.SimpleDateFormat;
@@ -180,6 +182,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 	private Switch blurVideoSwitch;
 	private SeekBar blurAmount;
 	private TextView blurAmountLabel;
+	private TextView mahjoobStatus;
 	private LinearLayout linear13;
 	private LinearLayout linear14;
 	private ProgressBar progressbar1;
@@ -246,6 +249,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.social_media);
 		initialize(_savedInstanceState);
+		startMahjoobInitialization();
 		
 		if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2
 				&& (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
@@ -332,6 +336,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 		blurVideoSwitch = findViewById(R.id.blur_video_switch);
 		blurAmount = findViewById(R.id.blur_amount);
 		blurAmountLabel = findViewById(R.id.blur_amount_label);
+		mahjoobStatus = findViewById(R.id.mahjoob_status);
 		linear13 = findViewById(R.id.linear13);
 		linear14 = findViewById(R.id.linear14);
 		progressbar1 = findViewById(R.id.progressbar1);
@@ -3099,6 +3104,29 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 		applyBlur(whats);
 		applyBlur(imoo);
 		applyBlur(Facebook);
+	}
+
+	private void startMahjoobInitialization() {
+		SharedPreferences preferences = getSharedPreferences("sv", Activity.MODE_PRIVATE);
+		MahjoobSettings.Mode mode = MahjoobSettings.readMode(preferences);
+		if (mode == MahjoobSettings.Mode.OFF) {
+			return;
+		}
+		mahjoobStatus.setVisibility(View.VISIBLE);
+		mahjoobStatus.setText(R.string.mahjoob_status_loading);
+		MahjoobManager.getInstance(getApplicationContext()).initialize(
+				mode.targetGender(),
+				MahjoobSettings.readStrict(preferences),
+				state -> {
+					if (isFinishing() || isDestroyed()) {
+						return;
+					}
+					if (state == MahjoobManager.State.READY) {
+						mahjoobStatus.setText(R.string.mahjoob_status_ready);
+					} else if (state == MahjoobManager.State.FAILED) {
+						mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
+					}
+				});
 	}
 
 	private void updateBlurFabIcon() {

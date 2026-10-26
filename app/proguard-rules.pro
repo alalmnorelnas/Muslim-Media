@@ -13,3 +13,5 @@
 # Keep Gson model classes that are (de)serialized via reflection if you add
 # any typed request/response DTOs later.
 # -keep class com.MuslimMedia.ans.model.** { *; }
+
+-keep class ai.onnxruntime.** { *; }

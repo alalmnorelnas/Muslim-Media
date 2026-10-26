@@ -479,6 +479,15 @@
 									android:layout_height="wrap_content"
 									android:max="40"
 									android:progress="10" />
+								<TextView
+									android:id="@+id/mahjoob_status"
+									android:layout_width="match_parent"
+									android:layout_height="wrap_content"
+									android:layout_margin="5dp"
+									android:padding="8dp"
+									android:text="@string/mahjoob_status_loading"
+									android:textColor="#FFFFFF"
+									android:visibility="gone" />
 							<TextView
 								android:id="@+id/textview13"
 								android:layout_width="match_parent"
