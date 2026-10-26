@@ -60,6 +60,7 @@ import com.google.gson.reflect.TypeToken;
 import com.MuslimMedia.ans.mahjoob.MahjoobManager;
 import com.MuslimMedia.ans.mahjoob.MahjoobImageInterceptor;
 import com.MuslimMedia.ans.mahjoob.MahjoobSettings;
+import com.MuslimMedia.ans.mahjoob.MahjoobVideoBridge;
 import java.io.*;
 import java.text.*;
 import java.text.SimpleDateFormat;
@@ -186,6 +187,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 	private TextView mahjoobStatus;
 	private volatile MahjoobImageInterceptor mahjoobImageInterceptor;
 	private MahjoobManager.Listener mahjoobStateListener;
+	private MahjoobVideoBridge mahjoobVideoBridge;
 	private LinearLayout linear13;
 	private LinearLayout linear14;
 	private ProgressBar progressbar1;
@@ -3152,6 +3154,35 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 			return;
 		}
 		MahjoobManager manager = MahjoobManager.getInstance(getApplicationContext());
+		if (!MahjoobVideoBridge.areRequiredFeaturesAvailable()) {
+			blockMahjoobNetworkLoads();
+			mahjoobStatus.setVisibility(View.VISIBLE);
+			mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
+			return;
+		}
+		try {
+			mahjoobVideoBridge = new MahjoobVideoBridge(getApplicationContext(), manager);
+		} catch (IOException failure) {
+			blockMahjoobNetworkLoads();
+			mahjoobStatus.setVisibility(View.VISIBLE);
+			mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
+			return;
+		}
+		boolean videoInstalled = mahjoobVideoBridge.install(webview1)
+				&& mahjoobVideoBridge.install(Youtube)
+				&& mahjoobVideoBridge.install(insta)
+				&& mahjoobVideoBridge.install(twitt)
+				&& mahjoobVideoBridge.install(whats)
+				&& mahjoobVideoBridge.install(imoo)
+				&& mahjoobVideoBridge.install(Facebook);
+		if (!videoInstalled) {
+			blockMahjoobNetworkLoads();
+			mahjoobVideoBridge.close();
+			mahjoobVideoBridge = null;
+			mahjoobStatus.setVisibility(View.VISIBLE);
+			mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
+			return;
+		}
 		mahjoobImageInterceptor = new MahjoobImageInterceptor(preferences, manager);
 		mahjoobStatus.setVisibility(View.VISIBLE);
 		mahjoobStatus.setText(R.string.mahjoob_status_loading);
@@ -3168,6 +3199,26 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 			mahjoobStateListener = null;
 		};
 		manager.initialize(mode.targetGender(), MahjoobSettings.readStrict(preferences), mahjoobStateListener);
+	}
+
+	private void blockMahjoobNetworkLoads() {
+		webview1.getSettings().setBlockNetworkLoads(true);
+		Youtube.getSettings().setBlockNetworkLoads(true);
+		insta.getSettings().setBlockNetworkLoads(true);
+		twitt.getSettings().setBlockNetworkLoads(true);
+		whats.getSettings().setBlockNetworkLoads(true);
+		imoo.getSettings().setBlockNetworkLoads(true);
+		Facebook.getSettings().setBlockNetworkLoads(true);
+	}
+
+	@Override
+	protected void onDestroy() {
+		mahjoobStateListener = null;
+		if (mahjoobVideoBridge != null) {
+			mahjoobVideoBridge.close();
+			mahjoobVideoBridge = null;
+		}
+		super.onDestroy();
 	}
 
 	private void updateBlurFabIcon() {

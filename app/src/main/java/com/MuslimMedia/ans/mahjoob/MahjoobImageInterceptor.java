@@ -33,7 +33,6 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-import dev.mahjoob.android.MahjoobGuard;
 import dev.mahjoob.core.Decision;
 
 public final class MahjoobImageInterceptor {
@@ -183,13 +182,12 @@ public final class MahjoobImageInterceptor {
 					blocked = true;
 					shouldCache = false;
 				} else {
-					MahjoobGuard guard = manager.getGuardIfReady();
-					if (guard == null) {
+					Decision decision = manager.check(bitmap, cacheKey);
+					if (decision == null) {
 						blocked = true;
 						shouldCache = false;
 					} else {
-						Decision decision = guard.check(bitmap, cacheKey);
-						blocked = decision == null || decision.isBlocked();
+						blocked = decision.isBlocked();
 					}
 				}
 			} finally {

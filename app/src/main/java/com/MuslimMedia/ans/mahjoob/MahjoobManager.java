@@ -1,11 +1,13 @@
 package com.MuslimMedia.ans.mahjoob;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
 
 import dev.mahjoob.android.MahjoobGuard;
 import dev.mahjoob.android.MahjoobOptions;
+import dev.mahjoob.core.Decision;
 import dev.mahjoob.core.TargetGender;
 
 import java.lang.ref.WeakReference;
@@ -31,6 +33,7 @@ public final class MahjoobManager {
 	private static volatile MahjoobManager instance;
 
 	private final Object lock = new Object();
+	private final Object inferenceLock = new Object();
 	private final Context appContext;
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
 	private volatile State state = State.NEW;
@@ -105,6 +108,23 @@ public final class MahjoobManager {
 
 	public MahjoobGuard getGuardIfReady() {
 		return state == State.READY ? guard : null;
+	}
+
+	public Decision check(Bitmap bitmap) {
+		return check(bitmap, null);
+	}
+
+	public Decision check(Bitmap bitmap, String cacheKey) {
+		if (Looper.myLooper() == Looper.getMainLooper()) {
+			throw new IllegalStateException("Mahjoob inference cannot run on the main thread");
+		}
+		synchronized (inferenceLock) {
+			MahjoobGuard activeGuard = getGuardIfReady();
+			if (activeGuard == null) {
+				return null;
+			}
+			return cacheKey == null ? activeGuard.check(bitmap) : activeGuard.check(bitmap, cacheKey);
+		}
 	}
 
 	public State getState() {
@@ -182,7 +202,9 @@ public final class MahjoobManager {
 			oldExecutor.shutdownNow();
 		}
 		if (oldGuard != null) {
-			oldGuard.close();
+			synchronized (inferenceLock) {
+				oldGuard.close();
+			}
 		}
 	}
 
