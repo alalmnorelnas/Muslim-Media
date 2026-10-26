@@ -2128,6 +2128,8 @@ public class SocialMediaActivity extends AppCompatActivity {
 	
 	@Override
 	public void onDestroy() {
+		mahjoobStateListener = null;
+		closeMahjoobVideoBridge();
 		unregisterDownloadReceivers();
 		super.onDestroy();
 		h++;
@@ -3328,16 +3330,6 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 				webView.getSettings().setBlockNetworkLoads(false);
 			}
 		}
-	}
-
-	@Override
-	protected void onDestroy() {
-		mahjoobStateListener = null;
-		if (mahjoobVideoBridge != null) {
-			mahjoobVideoBridge.close();
-			mahjoobVideoBridge = null;
-		}
-		super.onDestroy();
 	}
 
 	private void updateBlurFabIcon() {
