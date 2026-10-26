@@ -36,7 +36,6 @@ import okhttp3.ResponseBody;
 import dev.mahjoob.core.Decision;
 
 public final class MahjoobImageInterceptor {
-	private static final int MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 	private static final int MAX_BITMAP_SIDE = 1280;
 	private static final int MIN_CLASSIFY_SIDE = 40;
 	private static final int MAX_REDIRECTS = 10;
@@ -74,7 +73,8 @@ public final class MahjoobImageInterceptor {
 		if (MahjoobSettings.readMode(preferences) == MahjoobSettings.Mode.OFF
 				|| request == null
 				|| !"GET".equalsIgnoreCase(request.getMethod())
-				|| !acceptsImages(request.getRequestHeaders(), request.getUrl().toString())) {
+				|| !MahjoobRequestPolicy.isCandidateImageRequest(request.getMethod(), request.getRequestHeaders(),
+						request.getUrl().toString())) {
 			return null;
 		}
 		if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -88,7 +88,7 @@ public final class MahjoobImageInterceptor {
 		}
 
 		MahjoobSettings.Mode mode = MahjoobSettings.readMode(preferences);
-		String cacheKey = url + "|" + mode.name();
+		String cacheKey = MahjoobRequestPolicy.cacheKey(url, mode.preferenceValue());
 		ImageResult result = getOrCreateResult(cacheKey, request);
 		if (result == null) {
 			return blockedResponse();
@@ -273,7 +273,7 @@ public final class MahjoobImageInterceptor {
 	}
 
 	private static byte[] readBounded(ResponseBody body) throws IOException {
-		if (body.contentLength() > MAX_RESPONSE_BYTES) {
+		if (body.contentLength() > MahjoobRequestPolicy.MAX_IMAGE_BYTES) {
 			throw new IOException("Image response exceeded the size limit");
 		}
 		try (InputStream input = body.byteStream(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -282,7 +282,7 @@ public final class MahjoobImageInterceptor {
 			int read;
 			while ((read = input.read(buffer)) != -1) {
 				total += read;
-				if (total > MAX_RESPONSE_BYTES) {
+				if (!MahjoobRequestPolicy.isWithinSizeLimit(total, MahjoobRequestPolicy.MAX_IMAGE_BYTES)) {
 					throw new IOException("Image response exceeded the size limit");
 				}
 				output.write(buffer, 0, read);
@@ -316,26 +316,6 @@ public final class MahjoobImageInterceptor {
 		synchronized (cacheLock) {
 			decisions.put(key, blocked);
 		}
-	}
-
-	private static boolean acceptsImages(Map<String, String> headers, String url) {
-		if (headers != null) {
-			for (Map.Entry<String, String> header : headers.entrySet()) {
-				if ("accept".equalsIgnoreCase(header.getKey()) && header.getValue() != null
-						&& header.getValue().toLowerCase(Locale.US).contains("image/")) {
-					return true;
-				}
-			}
-		}
-		HttpUrl parsedUrl = HttpUrl.parse(url);
-		if (parsedUrl == null) {
-			return false;
-		}
-		String path = parsedUrl.encodedPath().toLowerCase(Locale.US);
-		return path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg")
-				|| path.endsWith(".gif") || path.endsWith(".webp") || path.endsWith(".avif")
-				|| path.endsWith(".bmp") || path.endsWith(".ico") || path.endsWith(".tif")
-				|| path.endsWith(".tiff") || path.endsWith(".svg");
 	}
 
 	private static Map<String, String> copyResponseHeaders(Headers headers) {

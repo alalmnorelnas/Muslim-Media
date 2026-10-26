@@ -8,8 +8,12 @@
 	var minimumClearMs = 1500;
 	var replyTimeoutMs = 2500;
 	var nextId = 1;
+	var enabled = true;
 	var states = new WeakMap();
 	var pending = new Map();
+	var scanInterval = null;
+	var observer = null;
+	var seekingHandler = null;
 
 	function installStyle() {
 		if (!document.documentElement || document.getElementById(styleId)) {
@@ -44,6 +48,10 @@
 	}
 
 	function cover(video, state, permanent) {
+		if (!enabled) {
+			restoreVisibility(video, state);
+			return;
+		}
 		state.epoch++;
 		state.allowCount = 0;
 		state.pending = false;
@@ -53,6 +61,44 @@
 		}
 		video.style.setProperty('visibility', 'hidden', 'important');
 		video.classList.remove('mahjoob-safe-video');
+	}
+
+	function restoreVisibility(video, state) {
+		video.classList.remove('mahjoob-safe-video');
+		if (state.originalVisibility) {
+			video.style.setProperty('visibility', state.originalVisibility, state.originalVisibilityPriority);
+		} else {
+			video.style.removeProperty('visibility');
+		}
+	}
+
+	function setEnabled(value) {
+		enabled = Boolean(value);
+		var videos = document.querySelectorAll('video');
+		for (var index = 0; index < videos.length; index++) {
+			var video = videos[index];
+			var state = getState(video);
+			state.epoch++;
+			state.pending = false;
+			state.allowCount = 0;
+			if (enabled) {
+				cover(video, state, false);
+			} else {
+				restoreVisibility(video, state);
+			}
+		}
+		pending.clear();
+		var style = document.getElementById(styleId);
+		if (enabled) {
+			installStyle();
+			startWatching();
+			scan();
+		} else {
+			if (style) {
+				style.remove();
+			}
+			stopWatching();
+		}
 	}
 
 	function handleReply(event) {
@@ -93,7 +139,7 @@
 
 	function sample(video) {
 		var state = getState(video);
-		if (state.permanent || video.seeking || video.paused || video.ended) {
+		if (!enabled || state.permanent || video.seeking || video.paused || video.ended) {
 			return;
 		}
 		if (video.readyState < 2 || video.videoWidth < 1 || video.videoHeight < 1) {
@@ -153,7 +199,7 @@
 	}
 
 	function scan() {
-		if (!installStyle()) {
+		if (!enabled || !installStyle()) {
 			return;
 		}
 		var videos = document.querySelectorAll('video');
@@ -168,24 +214,51 @@
 		}
 	}
 
+	function startWatching() {
+		if (!observer) {
+			observer = new MutationObserver(scan);
+			observer.observe(document.documentElement || document, { childList: true, subtree: true });
+		}
+		if (scanInterval === null) {
+			scanInterval = setInterval(scan, sampleIntervalMs);
+		}
+		if (!seekingHandler) {
+			seekingHandler = function (event) {
+				var video = event.target;
+				if (video && video.tagName === 'VIDEO') {
+					cover(video, getState(video), false);
+				}
+			};
+			document.addEventListener('seeking', seekingHandler, true);
+		}
+	}
+
+	function stopWatching() {
+		if (observer) {
+			observer.disconnect();
+			observer = null;
+		}
+		if (scanInterval !== null) {
+			clearInterval(scanInterval);
+			scanInterval = null;
+		}
+		if (seekingHandler) {
+			document.removeEventListener('seeking', seekingHandler, true);
+			seekingHandler = null;
+		}
+	}
+
 	function bind() {
 		installStyle();
+		window.mahjoobVideoFilter = { setEnabled: setEnabled };
 		var channel = window[bridgeName];
 		if (channel && typeof channel.addEventListener === 'function') {
 			channel.addEventListener('message', handleReply);
 		} else if (channel) {
 			channel.onmessage = handleReply;
 		}
-		document.addEventListener('seeking', function (event) {
-			var video = event.target;
-			if (video && video.tagName === 'VIDEO') {
-				cover(video, getState(video), false);
-			}
-		}, true);
-		var observer = new MutationObserver(scan);
-		observer.observe(document.documentElement || document, { childList: true, subtree: true });
+		startWatching();
 		scan();
-		setInterval(scan, sampleIntervalMs);
 	}
 
 	if (document.documentElement) {

@@ -14,6 +14,7 @@ import java.lang.ref.WeakReference;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public final class MahjoobManager {
@@ -40,7 +41,14 @@ public final class MahjoobManager {
 	private volatile MahjoobGuard guard;
 	private volatile Throwable initializationError;
 	private CountDownLatch readiness = new CountDownLatch(0);
-	private ExecutorService executor;
+	private long configurationVersion;
+	private TargetGender configuredTarget;
+	private boolean configuredStrict;
+	private final ExecutorService executor = Executors.newSingleThreadExecutor(runnable -> {
+		Thread thread = new Thread(runnable, "mahjoob-init");
+		thread.setDaemon(true);
+		return thread;
+	});
 	private volatile WeakReference<Listener> listener = new WeakReference<>(null);
 
 	private MahjoobManager(Context context) {
@@ -65,22 +73,30 @@ public final class MahjoobManager {
 		State immediateState = null;
 		synchronized (lock) {
 			listener = new WeakReference<>(stateListener);
-			if (state == State.READY || state == State.FAILED) {
-				immediateState = state;
-			} else if (state == State.LOADING) {
+			if (state == State.CLOSED) {
+				immediateState = State.CLOSED;
+			} else if (state == State.READY && target == configuredTarget && strict == configuredStrict) {
+				immediateState = State.READY;
+			} else if (state == State.LOADING && target == configuredTarget && strict == configuredStrict) {
 				return;
 			} else {
+				configuredTarget = target;
+				configuredStrict = strict;
 				initializationError = null;
+				readiness.countDown();
 				readiness = new CountDownLatch(1);
 				state = State.LOADING;
-				executor = Executors.newSingleThreadExecutor(runnable -> {
-					Thread thread = new Thread(runnable, "mahjoob-init");
-					thread.setDaemon(true);
-					return thread;
-				});
 				TargetGender selectedTarget = target;
 				boolean strictMode = strict;
-				executor.execute(() -> loadGuard(selectedTarget, strictMode));
+				long version = ++configurationVersion;
+				try {
+					executor.execute(() -> loadGuard(selectedTarget, strictMode, version));
+				} catch (RejectedExecutionException failure) {
+					initializationError = failure;
+					state = State.FAILED;
+					readiness.countDown();
+					immediateState = State.FAILED;
+				}
 			}
 		}
 		if (immediateState != null) {
@@ -135,41 +151,47 @@ public final class MahjoobManager {
 		return initializationError;
 	}
 
-	private void loadGuard(TargetGender target, boolean strict) {
+	private void loadGuard(TargetGender target, boolean strict, long version) {
 		MahjoobGuard loadedGuard = null;
 		Throwable error = null;
-		try {
-			MahjoobOptions options = new MahjoobOptions.Builder(target)
-					.strict(strict)
-					.blockThreshold(0.2)
-					.timeoutMs(15000)
-					.maxSide(1280)
-					.assetDir("mahjoob")
-					.build();
-			loadedGuard = MahjoobGuard.create(appContext, options);
-		} catch (RuntimeException | LinkageError | OutOfMemoryError failure) {
-			error = failure;
-		}
-
-		State finalState;
-		ExecutorService completedExecutor;
-		synchronized (lock) {
-			if (state == State.CLOSED) {
-				if (loadedGuard != null) {
-					loadedGuard.close();
+		State finalState = null;
+		synchronized (inferenceLock) {
+			MahjoobGuard oldGuard;
+			synchronized (lock) {
+				if (state == State.CLOSED || version != configurationVersion) {
+					return;
 				}
-				return;
+				oldGuard = guard;
+				guard = null;
 			}
-			guard = loadedGuard;
-			initializationError = error;
-			state = loadedGuard == null ? State.FAILED : State.READY;
-			finalState = state;
-			completedExecutor = executor;
-			executor = null;
-			readiness.countDown();
-		}
-		if (completedExecutor != null) {
-			completedExecutor.shutdown();
+			if (oldGuard != null) {
+				oldGuard.close();
+			}
+			try {
+				MahjoobOptions options = new MahjoobOptions.Builder(target)
+						.strict(strict)
+						.blockThreshold(0.2)
+						.timeoutMs(15000)
+						.maxSide(1280)
+						.assetDir("mahjoob")
+						.build();
+				loadedGuard = MahjoobGuard.create(appContext, options);
+			} catch (RuntimeException | LinkageError | OutOfMemoryError failure) {
+				error = failure;
+			}
+			synchronized (lock) {
+				if (state == State.CLOSED || version != configurationVersion) {
+					if (loadedGuard != null) {
+						loadedGuard.close();
+					}
+					return;
+				}
+				guard = loadedGuard;
+				initializationError = error;
+				state = loadedGuard == null ? State.FAILED : State.READY;
+				finalState = state;
+				readiness.countDown();
+			}
 		}
 		notifyListener(finalState);
 	}
@@ -186,7 +208,6 @@ public final class MahjoobManager {
 
 	public void close() {
 		MahjoobGuard oldGuard;
-		ExecutorService oldExecutor;
 		synchronized (lock) {
 			if (state == State.CLOSED) {
 				return;
@@ -195,12 +216,8 @@ public final class MahjoobManager {
 			readiness.countDown();
 			oldGuard = guard;
 			guard = null;
-			oldExecutor = executor;
-			executor = null;
 		}
-		if (oldExecutor != null) {
-			oldExecutor.shutdownNow();
-		}
+		executor.shutdownNow();
 		if (oldGuard != null) {
 			synchronized (inferenceLock) {
 				oldGuard.close();

@@ -11,6 +11,9 @@ android {
 	defaultConfig {
 		applicationId "com.MuslimMedia.ans"
 		minSdkVersion 24
+		ndk {
+			abiFilters 'arm64-v8a', 'armeabi-v7a'
+		}
 		// NOTE: targetSdkVersion intentionally kept at the original value.
 		// The app relies on legacy (non-scoped) external storage access via
 		// android:requestLegacyExternalStorage, which Android only honors up
@@ -56,4 +59,5 @@ dependencies {
 	implementation 'com.google.android.material:material:1.11.0'
 	implementation 'com.google.code.gson:gson:2.10.1'
 	implementation 'com.squareup.okhttp3:okhttp:3.12.13'
+	testImplementation 'junit:junit:4.13.2'
 }

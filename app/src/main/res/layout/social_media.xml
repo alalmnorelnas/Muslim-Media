@@ -480,6 +480,58 @@
 									android:max="40"
 									android:progress="10" />
 								<TextView
+									android:layout_width="match_parent"
+									android:layout_height="wrap_content"
+									android:layout_margin="5dp"
+									android:padding="8dp"
+									android:text="@string/mahjoob_settings_title"
+									android:textColor="#FFFFFF"
+									android:textSize="18sp" />
+								<RadioGroup
+									android:id="@+id/mahjoob_mode_group"
+									android:layout_width="match_parent"
+									android:layout_height="wrap_content"
+									android:orientation="vertical">
+									<RadioButton
+										android:id="@+id/mahjoob_mode_off"
+										android:layout_width="match_parent"
+										android:layout_height="wrap_content"
+										android:text="@string/mahjoob_mode_off"
+										android:textColor="#FFFFFF" />
+									<RadioButton
+										android:id="@+id/mahjoob_mode_women"
+										android:layout_width="match_parent"
+										android:layout_height="wrap_content"
+										android:text="@string/mahjoob_mode_women"
+										android:textColor="#FFFFFF" />
+									<RadioButton
+										android:id="@+id/mahjoob_mode_men"
+										android:layout_width="match_parent"
+										android:layout_height="wrap_content"
+										android:text="@string/mahjoob_mode_men"
+										android:textColor="#FFFFFF" />
+									<RadioButton
+										android:id="@+id/mahjoob_mode_everyone"
+										android:layout_width="match_parent"
+										android:layout_height="wrap_content"
+										android:text="@string/mahjoob_mode_everyone"
+										android:textColor="#FFFFFF" />
+								</RadioGroup>
+								<Switch
+									android:id="@+id/mahjoob_strict_switch"
+									android:layout_width="match_parent"
+									android:layout_height="wrap_content"
+									android:layout_margin="5dp"
+									android:checked="true"
+									android:text="@string/mahjoob_strict_mode"
+									android:textColor="#FFFFFF" />
+								<Button
+									android:id="@+id/mahjoob_licenses_button"
+									android:layout_width="match_parent"
+									android:layout_height="wrap_content"
+									android:layout_margin="5dp"
+									android:text="@string/mahjoob_licenses" />
+								<TextView
 									android:id="@+id/mahjoob_status"
 									android:layout_width="match_parent"
 									android:layout_height="wrap_content"

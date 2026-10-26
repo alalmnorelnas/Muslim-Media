@@ -184,6 +184,9 @@ public class SocialMediaActivity extends AppCompatActivity {
 	private Switch blurVideoSwitch;
 	private SeekBar blurAmount;
 	private TextView blurAmountLabel;
+	private RadioGroup mahjoobModeGroup;
+	private Switch mahjoobStrictSwitch;
+	private Button mahjoobLicensesButton;
 	private TextView mahjoobStatus;
 	private volatile MahjoobImageInterceptor mahjoobImageInterceptor;
 	private MahjoobManager.Listener mahjoobStateListener;
@@ -254,13 +257,13 @@ public class SocialMediaActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.social_media);
 		initialize(_savedInstanceState);
-		startMahjoobInitialization();
 		
 		if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2
 				&& (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
 				|| ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED)) {
 			ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1000);
 		} else {
+			startMahjoobInitialization();
 			initializeLogic();
 		}
 	}
@@ -269,6 +272,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 	public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 		if (requestCode == 1000) {
+			startMahjoobInitialization();
 			initializeLogic();
 		}
 	}
@@ -341,6 +345,9 @@ public class SocialMediaActivity extends AppCompatActivity {
 		blurVideoSwitch = findViewById(R.id.blur_video_switch);
 		blurAmount = findViewById(R.id.blur_amount);
 		blurAmountLabel = findViewById(R.id.blur_amount_label);
+		mahjoobModeGroup = findViewById(R.id.mahjoob_mode_group);
+		mahjoobStrictSwitch = findViewById(R.id.mahjoob_strict_switch);
+		mahjoobLicensesButton = findViewById(R.id.mahjoob_licenses_button);
 		mahjoobStatus = findViewById(R.id.mahjoob_status);
 		linear13 = findViewById(R.id.linear13);
 		linear14 = findViewById(R.id.linear14);
@@ -386,6 +393,9 @@ public class SocialMediaActivity extends AppCompatActivity {
 		fab_enable_image = findViewById(R.id.fab_enable_image);
 		fabBlurToggle = findViewById(R.id.fab_blur_toggle);
 		sv = getSharedPreferences("sv", Activity.MODE_PRIVATE);
+		MahjoobSettings.Mode savedMahjoobMode = MahjoobSettings.readMode(sv);
+		mahjoobModeGroup.check(getMahjoobModeButtonId(savedMahjoobMode));
+		mahjoobStrictSwitch.setChecked(MahjoobSettings.readStrict(sv));
 		nonet = new RequestNetwork(this);
 		d = new AlertDialog.Builder(this);
 		showImage = new AlertDialog.Builder(this);
@@ -427,6 +437,23 @@ public class SocialMediaActivity extends AppCompatActivity {
 			@Override public void onStartTrackingTouch(SeekBar seekBar) { }
 			@Override public void onStopTrackingTouch(SeekBar seekBar) { }
 		});
+		mahjoobModeGroup.setOnCheckedChangeListener((group, checkedId) -> {
+			MahjoobSettings.Mode selectedMode = getMahjoobMode(checkedId);
+			MahjoobSettings.writeMode(sv, selectedMode);
+			applyMahjoobModeChange(selectedMode);
+		});
+		mahjoobStrictSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+			MahjoobSettings.writeStrict(sv, isChecked);
+			MahjoobSettings.Mode selectedMode = MahjoobSettings.readMode(sv);
+			if (selectedMode != MahjoobSettings.Mode.OFF) {
+				applyMahjoobModeChange(selectedMode);
+			}
+		});
+		mahjoobLicensesButton.setOnClickListener(view -> new AlertDialog.Builder(this)
+				.setTitle(R.string.mahjoob_licenses_title)
+				.setMessage(R.string.mahjoob_licenses_text)
+				.setPositiveButton(R.string.mahjoob_acknowledge, null)
+				.show());
 		
 		search_linear.setOnClickListener(new View.OnClickListener() {
 			@Override
@@ -3151,43 +3178,17 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 		MahjoobSettings.Mode mode = MahjoobSettings.readMode(preferences);
 		if (mode == MahjoobSettings.Mode.OFF) {
 			mahjoobImageInterceptor = null;
+			closeMahjoobVideoBridge();
+			allowMahjoobNetworkLoads();
+			mahjoobStatus.setVisibility(View.GONE);
 			return;
 		}
+		showMahjoobAccuracyNotice(preferences);
 		MahjoobManager manager = MahjoobManager.getInstance(getApplicationContext());
-		if (!MahjoobVideoBridge.areRequiredFeaturesAvailable()) {
-			blockMahjoobNetworkLoads();
-			mahjoobStatus.setVisibility(View.VISIBLE);
-			mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
-			return;
-		}
-		try {
-			mahjoobVideoBridge = new MahjoobVideoBridge(getApplicationContext(), manager);
-		} catch (IOException failure) {
-			blockMahjoobNetworkLoads();
-			mahjoobStatus.setVisibility(View.VISIBLE);
-			mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
-			return;
-		}
-		boolean videoInstalled = mahjoobVideoBridge.install(webview1)
-				&& mahjoobVideoBridge.install(Youtube)
-				&& mahjoobVideoBridge.install(insta)
-				&& mahjoobVideoBridge.install(twitt)
-				&& mahjoobVideoBridge.install(whats)
-				&& mahjoobVideoBridge.install(imoo)
-				&& mahjoobVideoBridge.install(Facebook);
-		if (!videoInstalled) {
-			blockMahjoobNetworkLoads();
-			mahjoobVideoBridge.close();
-			mahjoobVideoBridge = null;
-			mahjoobStatus.setVisibility(View.VISIBLE);
-			mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
-			return;
-		}
-		mahjoobImageInterceptor = new MahjoobImageInterceptor(preferences, manager);
 		mahjoobStatus.setVisibility(View.VISIBLE);
 		mahjoobStatus.setText(R.string.mahjoob_status_loading);
 		mahjoobStateListener = state -> {
-			if (isFinishing() || isDestroyed()) {
+			if (isFinishing() || isDestroyed() || mahjoobVideoBridge == null) {
 				mahjoobStateListener = null;
 				return;
 			}
@@ -3199,16 +3200,134 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 			mahjoobStateListener = null;
 		};
 		manager.initialize(mode.targetGender(), MahjoobSettings.readStrict(preferences), mahjoobStateListener);
+		if (!MahjoobVideoBridge.areRequiredFeaturesAvailable()) {
+			closeMahjoobVideoBridge();
+			blockMahjoobNetworkLoads();
+			mahjoobImageInterceptor = null;
+			mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
+			return;
+		}
+		allowMahjoobNetworkLoads();
+		if (mahjoobVideoBridge == null) {
+			try {
+				mahjoobVideoBridge = new MahjoobVideoBridge(getApplicationContext(), manager);
+			} catch (IOException failure) {
+				blockMahjoobNetworkLoads();
+				mahjoobImageInterceptor = null;
+				mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
+				return;
+			}
+			boolean videoInstalled = mahjoobVideoBridge.install(webview1)
+					&& mahjoobVideoBridge.install(Youtube)
+					&& mahjoobVideoBridge.install(insta)
+					&& mahjoobVideoBridge.install(twitt)
+					&& mahjoobVideoBridge.install(whats)
+					&& mahjoobVideoBridge.install(imoo)
+					&& mahjoobVideoBridge.install(Facebook);
+			if (!videoInstalled) {
+				blockMahjoobNetworkLoads();
+				closeMahjoobVideoBridge();
+				mahjoobImageInterceptor = null;
+				mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
+				return;
+			}
+		}
+		mahjoobImageInterceptor = new MahjoobImageInterceptor(preferences, manager);
+		coverOpenVideosForRecheck();
+	}
+
+	private void applyMahjoobModeChange(MahjoobSettings.Mode mode) {
+		if (mode == MahjoobSettings.Mode.OFF) {
+			mahjoobImageInterceptor = null;
+			closeMahjoobVideoBridge();
+			allowMahjoobNetworkLoads();
+			mahjoobStatus.setVisibility(View.GONE);
+		} else {
+			startMahjoobInitialization();
+		}
+		reloadOpenWebViews();
+	}
+
+	private MahjoobSettings.Mode getMahjoobMode(int checkedId) {
+		if (checkedId == R.id.mahjoob_mode_off) {
+			return MahjoobSettings.Mode.OFF;
+		}
+		if (checkedId == R.id.mahjoob_mode_women) {
+			return MahjoobSettings.Mode.WOMEN;
+		}
+		if (checkedId == R.id.mahjoob_mode_men) {
+			return MahjoobSettings.Mode.MEN;
+		}
+		return MahjoobSettings.Mode.EVERYONE;
+	}
+
+	private int getMahjoobModeButtonId(MahjoobSettings.Mode mode) {
+		switch (mode) {
+			case OFF:
+				return R.id.mahjoob_mode_off;
+			case WOMEN:
+				return R.id.mahjoob_mode_women;
+			case MEN:
+				return R.id.mahjoob_mode_men;
+			default:
+				return R.id.mahjoob_mode_everyone;
+		}
+	}
+
+	private void showMahjoobAccuracyNotice(SharedPreferences preferences) {
+		if (MahjoobSettings.hasShownAccuracyNotice(preferences)) {
+			return;
+		}
+		MahjoobSettings.markAccuracyNoticeShown(preferences);
+		new AlertDialog.Builder(this)
+				.setTitle(R.string.mahjoob_accuracy_title)
+				.setMessage(R.string.mahjoob_accuracy_text)
+				.setPositiveButton(R.string.mahjoob_acknowledge, null)
+				.show();
+	}
+
+	private void closeMahjoobVideoBridge() {
+		if (mahjoobVideoBridge != null) {
+			mahjoobVideoBridge.close();
+			mahjoobVideoBridge = null;
+		}
+	}
+
+	private WebView[] getMahjoobWebViews() {
+		return new WebView[] {webview1, Youtube, insta, twitt, whats, imoo, Facebook};
+	}
+
+	private void reloadOpenWebViews() {
+		for (WebView webView : getMahjoobWebViews()) {
+			if (webView != null && webView.getUrl() != null) {
+				webView.reload();
+			}
+		}
+	}
+
+	private void coverOpenVideosForRecheck() {
+		for (WebView webView : getMahjoobWebViews()) {
+			if (webView != null && webView.getUrl() != null) {
+				webView.evaluateJavascript(
+						"if(window.mahjoobVideoFilter){window.mahjoobVideoFilter.setEnabled(true);}", null);
+			}
+		}
 	}
 
 	private void blockMahjoobNetworkLoads() {
-		webview1.getSettings().setBlockNetworkLoads(true);
-		Youtube.getSettings().setBlockNetworkLoads(true);
-		insta.getSettings().setBlockNetworkLoads(true);
-		twitt.getSettings().setBlockNetworkLoads(true);
-		whats.getSettings().setBlockNetworkLoads(true);
-		imoo.getSettings().setBlockNetworkLoads(true);
-		Facebook.getSettings().setBlockNetworkLoads(true);
+		for (WebView webView : getMahjoobWebViews()) {
+			if (webView != null) {
+				webView.getSettings().setBlockNetworkLoads(true);
+			}
+		}
+	}
+
+	private void allowMahjoobNetworkLoads() {
+		for (WebView webView : getMahjoobWebViews()) {
+			if (webView != null) {
+				webView.getSettings().setBlockNetworkLoads(false);
+			}
+		}
 	}
 
 	@Override

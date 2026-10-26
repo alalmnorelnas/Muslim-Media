@@ -11,6 +11,7 @@ import android.util.Base64;
 import android.webkit.WebView;
 
 import androidx.webkit.JavaScriptReplyProxy;
+import androidx.webkit.ScriptHandler;
 import androidx.webkit.WebMessageCompat;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
@@ -34,10 +35,9 @@ import java.util.concurrent.TimeUnit;
 
 public final class MahjoobVideoBridge implements AutoCloseable {
 	private static final String BRIDGE_NAME = "mahjoobVideo";
-	private static final int MAX_MESSAGE_CHARS = 512 * 1024;
-	private static final int MAX_FRAME_BYTES = 384 * 1024;
+	private static final int MAX_FRAME_BASE64_CHARS = (MahjoobRequestPolicy.MAX_VIDEO_FRAME_BYTES + 2) / 3 * 4;
+	private static final int MAX_MESSAGE_CHARS = MAX_FRAME_BASE64_CHARS + 256;
 	private static final int MAX_FRAME_SIDE = 480;
-	private static final long MIN_FRAME_INTERVAL_MS = 450;
 	private static final long GUARD_READY_TIMEOUT_MS = 15000;
 	private static final String SCRIPT_PATH = "mahjoob/video_filter.js";
 
@@ -45,6 +45,7 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 	private final String script;
 	private final Handler mainHandler = new Handler(Looper.getMainLooper());
 	private final Map<WebView, RequestState> requestStates = Collections.synchronizedMap(new WeakHashMap<>());
+	private final Map<WebView, ScriptHandler> scriptHandlers = Collections.synchronizedMap(new WeakHashMap<>());
 	private final ThreadPoolExecutor inferenceExecutor = new ThreadPoolExecutor(
 			1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(2), runnable -> {
 				Thread thread = new Thread(runnable, "mahjoob-video-inference");
@@ -74,9 +75,15 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 		try {
 			WebViewCompat.addWebMessageListener(webView, BRIDGE_NAME,
 					Collections.singleton("*"), this::onPostMessage);
-			WebViewCompat.addDocumentStartJavaScript(webView, script, Collections.singleton("*"));
+			ScriptHandler scriptHandler = WebViewCompat.addDocumentStartJavaScript(
+					webView, script, Collections.singleton("*"));
+			scriptHandlers.put(webView, scriptHandler);
 			return true;
 		} catch (RuntimeException | LinkageError failure) {
+			try {
+				WebViewCompat.removeWebMessageListener(webView, BRIDGE_NAME);
+			} catch (RuntimeException | LinkageError ignored) {
+			}
 			return false;
 		}
 	}
@@ -97,7 +104,7 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 				return;
 			}
 			encodedFrame = payload.optString("jpeg", "");
-			if (encodedFrame.isEmpty() || encodedFrame.length() > MAX_MESSAGE_CHARS) {
+			if (encodedFrame.isEmpty() || encodedFrame.length() > MAX_FRAME_BASE64_CHARS) {
 				reply(replyProxy, requestId, false);
 				return;
 			}
@@ -108,7 +115,8 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 		RequestState state = stateFor(webView);
 		long now = SystemClock.elapsedRealtime();
 		synchronized (state) {
-			if (state.busy || now - state.lastAcceptedAt < MIN_FRAME_INTERVAL_MS) {
+			if (state.busy || !MahjoobRequestPolicy.hasElapsed(state.lastAcceptedAt, now,
+					MahjoobRequestPolicy.MIN_VIDEO_FRAME_INTERVAL_MS)) {
 				reply(replyProxy, requestId, false);
 				return;
 			}
@@ -132,7 +140,8 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 		Bitmap bitmap = null;
 		try {
 			byte[] jpeg = Base64.decode(encodedFrame, Base64.DEFAULT);
-			if (jpeg.length < 4 || jpeg.length > MAX_FRAME_BYTES
+			if (!MahjoobRequestPolicy.isWithinSizeLimit(jpeg.length, MahjoobRequestPolicy.MAX_VIDEO_FRAME_BYTES)
+					|| jpeg.length < 4
 					|| (jpeg[0] & 0xff) != 0xff || (jpeg[1] & 0xff) != 0xd8) {
 				return;
 			}
@@ -174,7 +183,7 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 	}
 
 	private void reply(JavaScriptReplyProxy replyProxy, long requestId, boolean allow) {
-		String decision = allow ? "allow" : "block";
+		String decision = allow && !closed ? "allow" : "block";
 		String response = "{\"id\":" + requestId + ",\"decision\":\"" + decision + "\"}";
 		mainHandler.post(() -> {
 			try {
@@ -205,13 +214,41 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 	public void close() {
 		closed = true;
 		inferenceExecutor.shutdownNow();
+		Runnable removeScripts = () -> {
+			synchronized (scriptHandlers) {
+				for (Map.Entry<WebView, ScriptHandler> entry : scriptHandlers.entrySet()) {
+					WebView webView = entry.getKey();
+					if (webView == null) {
+						continue;
+					}
+					try {
+						webView.evaluateJavascript("if(window.mahjoobVideoFilter){window.mahjoobVideoFilter.setEnabled(false);}", null);
+					} catch (RuntimeException ignored) {
+					}
+					try {
+						entry.getValue().remove();
+					} catch (RuntimeException | LinkageError ignored) {
+					}
+					try {
+						WebViewCompat.removeWebMessageListener(webView, BRIDGE_NAME);
+					} catch (RuntimeException | LinkageError ignored) {
+					}
+				}
+				scriptHandlers.clear();
+			}
+		};
+		if (Looper.myLooper() == Looper.getMainLooper()) {
+			removeScripts.run();
+		} else {
+			mainHandler.post(removeScripts);
+		}
 		synchronized (requestStates) {
 			requestStates.clear();
 		}
 	}
 
 	private static final class RequestState {
-		long lastAcceptedAt;
+		long lastAcceptedAt = -1;
 		boolean busy;
 	}
 }

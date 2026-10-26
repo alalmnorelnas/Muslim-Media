@@ -4,4 +4,19 @@
 	<string name="mahjoob_status_ready">التصفية المحلية جاهزة</string>
 	<string name="mahjoob_status_unavailable">التصفية المحلية غير متاحة؛ ستبقى العناصر محجوبة عند تعذر التحقق</string>
 	<string name="mahjoob_status_update_webview">حدّث Android System WebView لتفعيل التصفية؛ لن يتم تحميل المحتوى حتى يتوفر الدعم</string>
+	<string name="mahjoob_settings_title">التصفية الذكية للصور والفيديو</string>
+	<string name="mahjoob_mode_off">إيقاف</string>
+	<string name="mahjoob_mode_women">حجب النساء</string>
+	<string name="mahjoob_mode_men">حجب الرجال</string>
+	<string name="mahjoob_mode_everyone">حجب الجميع</string>
+	<string name="mahjoob_strict_mode">الوضع الصارم: الحجب عند تعذر التحقق</string>
+	<string name="mahjoob_licenses">التراخيص</string>
+	<string name="mahjoob_licenses_title">تراخيص التصفية الذكية</string>
+	<string name="mahjoob_licenses_text">Mahjoob: MIT
+YuNet: MIT
+gender-v1: CC0 (dlib-models / Cydral Technology، عبر حزمة age-and-gender المرخصة بـ MIT)
+ONNX Runtime: MIT</string>
+	<string name="mahjoob_accuracy_title">تنبيه حول دقة التصفية</string>
+	<string name="mahjoob_accuracy_text">هذه التصفية ليست دقيقة بنسبة 100٪. في اختبار لوجوه واضحة وقريبة، لم يُحجب نحو 7٪ من وجوه النساء (مجال ثقة 95٪: 3.4٪ إلى 13.7٪)، وحُجب نحو 28٪ من وجوه الرجال بالخطأ عند العتبة الافتراضية. قد تكون النتائج أسوأ في الصور الواقعية، والصور التي لا يُكتشف فيها وجه قد تمر دون حجب. وضع «الجميع» هو الأشد، لكنه لا يضمن حجب كل صورة.</string>
+	<string name="mahjoob_acknowledge">فهمت</string>
 </resources>
