@@ -1,6 +1,7 @@
 package com.MuslimMedia.ans.mahjoob;
 
 import android.content.Context;
+import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -68,8 +69,11 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 		}
 	}
 
+	@SuppressLint("RequiresFeature")
 	public boolean install(WebView webView) {
-		if (closed || script == null || !areRequiredFeaturesAvailable()) {
+		if (closed || script == null
+				|| !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+				|| !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
 			return false;
 		}
 		try {
@@ -80,9 +84,11 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 			scriptHandlers.put(webView, scriptHandler);
 			return true;
 		} catch (RuntimeException | LinkageError failure) {
-			try {
-				WebViewCompat.removeWebMessageListener(webView, BRIDGE_NAME);
-			} catch (RuntimeException | LinkageError ignored) {
+			if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+				try {
+					WebViewCompat.removeWebMessageListener(webView, BRIDGE_NAME);
+				} catch (RuntimeException | LinkageError ignored) {
+				}
 			}
 			return false;
 		}
@@ -187,7 +193,9 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 		String response = "{\"id\":" + requestId + ",\"decision\":\"" + decision + "\"}";
 		mainHandler.post(() -> {
 			try {
-				replyProxy.postMessage(response);
+				if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+					replyProxy.postMessage(response);
+				}
 			} catch (RuntimeException ignored) {
 			}
 		});
@@ -226,11 +234,15 @@ public final class MahjoobVideoBridge implements AutoCloseable {
 					} catch (RuntimeException ignored) {
 					}
 					try {
-						entry.getValue().remove();
+						if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+							entry.getValue().remove();
+						}
 					} catch (RuntimeException | LinkageError ignored) {
 					}
 					try {
-						WebViewCompat.removeWebMessageListener(webView, BRIDGE_NAME);
+						if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+							WebViewCompat.removeWebMessageListener(webView, BRIDGE_NAME);
+						}
 					} catch (RuntimeException | LinkageError ignored) {
 					}
 				}
