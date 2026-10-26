@@ -58,6 +58,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.MuslimMedia.ans.mahjoob.MahjoobManager;
+import com.MuslimMedia.ans.mahjoob.MahjoobImageInterceptor;
 import com.MuslimMedia.ans.mahjoob.MahjoobSettings;
 import java.io.*;
 import java.text.*;
@@ -183,6 +184,8 @@ public class SocialMediaActivity extends AppCompatActivity {
 	private SeekBar blurAmount;
 	private TextView blurAmountLabel;
 	private TextView mahjoobStatus;
+	private volatile MahjoobImageInterceptor mahjoobImageInterceptor;
+	private MahjoobManager.Listener mahjoobStateListener;
 	private LinearLayout linear13;
 	private LinearLayout linear14;
 	private ProgressBar progressbar1;
@@ -1306,6 +1309,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		
 		webview1.setWebViewClient(new WebViewClient() {
 			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
+			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
 				edittext3.setText(_url);
@@ -1346,6 +1354,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		
 		Youtube.setWebViewClient(new WebViewClient() {
 			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
+			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
 				if (_url.contains("https://m.youtube.com/") || (_url.contains("https://accounts.google.com/") || _url.contains("https://studio.youtube.com/"))) {
@@ -1382,6 +1395,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		});
 		
 		insta.setWebViewClient(new WebViewClient() {
+			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
 			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
@@ -1420,6 +1438,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		
 		twitt.setWebViewClient(new WebViewClient() {
 			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
+			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
 				if (_url.contains("https://x.com/")) {
@@ -1456,6 +1479,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		});
 		
 		whats.setWebViewClient(new WebViewClient() {
+			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
 			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
@@ -1494,6 +1522,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		
 		imoo.setWebViewClient(new WebViewClient() {
 			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
+			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
 				if (_url.contains("https://web.telegram.org/")) {
@@ -1530,6 +1563,11 @@ public class SocialMediaActivity extends AppCompatActivity {
 		});
 		
 		Facebook.setWebViewClient(new WebViewClient() {
+			@Override
+			public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+				return mahjoobImageInterceptor == null ? null : mahjoobImageInterceptor.intercept(view, request);
+			}
+
 			@Override
 			public void onPageStarted(WebView _param1, String _param2, Bitmap _param3) {
 				final String _url = _param2;
@@ -3110,23 +3148,26 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 		SharedPreferences preferences = getSharedPreferences("sv", Activity.MODE_PRIVATE);
 		MahjoobSettings.Mode mode = MahjoobSettings.readMode(preferences);
 		if (mode == MahjoobSettings.Mode.OFF) {
+			mahjoobImageInterceptor = null;
 			return;
 		}
+		MahjoobManager manager = MahjoobManager.getInstance(getApplicationContext());
+		mahjoobImageInterceptor = new MahjoobImageInterceptor(preferences, manager);
 		mahjoobStatus.setVisibility(View.VISIBLE);
 		mahjoobStatus.setText(R.string.mahjoob_status_loading);
-		MahjoobManager.getInstance(getApplicationContext()).initialize(
-				mode.targetGender(),
-				MahjoobSettings.readStrict(preferences),
-				state -> {
-					if (isFinishing() || isDestroyed()) {
-						return;
-					}
-					if (state == MahjoobManager.State.READY) {
-						mahjoobStatus.setText(R.string.mahjoob_status_ready);
-					} else if (state == MahjoobManager.State.FAILED) {
-						mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
-					}
-				});
+		mahjoobStateListener = state -> {
+			if (isFinishing() || isDestroyed()) {
+				mahjoobStateListener = null;
+				return;
+			}
+			if (state == MahjoobManager.State.READY) {
+				mahjoobStatus.setText(R.string.mahjoob_status_ready);
+			} else if (state == MahjoobManager.State.FAILED) {
+				mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
+			}
+			mahjoobStateListener = null;
+		};
+		manager.initialize(mode.targetGender(), MahjoobSettings.readStrict(preferences), mahjoobStateListener);
 	}
 
 	private void updateBlurFabIcon() {

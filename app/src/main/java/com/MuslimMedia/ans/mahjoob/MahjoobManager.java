@@ -127,11 +127,12 @@ public final class MahjoobManager {
 					.assetDir("mahjoob")
 					.build();
 			loadedGuard = MahjoobGuard.create(appContext, options);
-		} catch (RuntimeException | LinkageError failure) {
+		} catch (RuntimeException | LinkageError | OutOfMemoryError failure) {
 			error = failure;
 		}
 
 		State finalState;
+		ExecutorService completedExecutor;
 		synchronized (lock) {
 			if (state == State.CLOSED) {
 				if (loadedGuard != null) {
@@ -143,7 +144,12 @@ public final class MahjoobManager {
 			initializationError = error;
 			state = loadedGuard == null ? State.FAILED : State.READY;
 			finalState = state;
+			completedExecutor = executor;
+			executor = null;
 			readiness.countDown();
+		}
+		if (completedExecutor != null) {
+			completedExecutor.shutdown();
 		}
 		notifyListener(finalState);
 	}
