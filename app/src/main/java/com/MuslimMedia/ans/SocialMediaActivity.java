@@ -3953,15 +3953,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 		webview1.getSettings().setLoadWithOverviewMode(true);
 		webview1.getSettings().setUseWideViewPort(true);
 		webview1.getSettings().setDomStorageEnabled(true);
-		
-		String userAgent = webview1.getSettings().getUserAgentString();
-		try {
-			    String androidString = webview1.getSettings().getUserAgentString().substring(userAgent.indexOf("("), userAgent.indexOf(")") + 1);
-			    userAgent = webview1.getSettings().getUserAgentString().replace(androidString, "X11; Linux x86_64");
-		} catch (Exception e) {
-			    e.printStackTrace();
-		}
-		webview1.getSettings().setUserAgentString(userAgent);
+		// Keep the provider's User-Agent so sites can detect its actual Chromium version.
 		webview1.reload();
 	}
 	
