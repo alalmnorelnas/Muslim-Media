@@ -1,5 +1,22 @@
 <resources>
 	<string name="app_name" translatable="false">وسائل تواصل المسلم</string>
+	<string name="welcome_eyebrow">تصفّح وتواصل بوعي</string>
+	<string name="welcome_tagline">مساحة واحدة لبحثك ومواقعك المفضلة</string>
+	<string name="welcome_section_title">تجربة رقمية تحت تحكّمك</string>
+	<string name="welcome_section_intro">أدوات عملية تساعدك على تقليل المحتوى المشتت وتنظيم وقتك.</string>
+	<string name="welcome_browser_title">ابحث وتصفّح من مكان واحد</string>
+	<string name="welcome_browser_body">اكتب كلمة بحث أو افتح رابطًا مباشرة، وانتقل إلى اختصارات مواقع التواصل المفضلة.</string>
+	<string name="welcome_blur_title">اختر ما يظهر أمامك</string>
+	<string name="welcome_blur_body">شوّش الصور والفيديو واضبط الدرجة. اضغط على العنصر لإظهاره مؤقتًا عند الحاجة.</string>
+	<string name="welcome_filter_title">تصفية ذكية اختيارية</string>
+	<string name="welcome_filter_body">اختر حجب النساء أو الرجال أو الجميع في الصور والفيديو. التحليل تقديري وقد يخطئ، وليس ضمانًا للحجب الكامل.</string>
+	<string name="welcome_time_title">نظّم وقت التصفح</string>
+	<string name="welcome_time_body">حدّد مدة الجلسة وعدد الجلسات اليومية، وتابع وقتك بدل التصفح المفتوح بلا نهاية.</string>
+	<string name="welcome_dhikr_title">سبحة معك دون إنترنت</string>
+	<string name="welcome_dhikr_body">عند انقطاع الشبكة، افتح عدّاد التسبيح واستثمر وقت الانتظار في الذكر.</string>
+	<string name="welcome_tip">لأفضل استفادة: ابدأ بضبط وقتك، ثم اختر مستوى التشويش والتصفية الذي يناسبك. يمكنك تعديل الخيارات لاحقًا من الشاشة الرئيسية.</string>
+	<string name="welcome_start">ابدأ الآن</string>
+	<string name="welcome_footer">بحث ومواقع تواصل وأدوات تساعدك على استخدام أكثر وعيًا</string>
 	<string name="mahjoob_status_loading">جارٍ تهيئة التصفية المحلية...</string>
 	<string name="mahjoob_status_ready">التصفية المحلية جاهزة</string>
 	<string name="mahjoob_status_unavailable">التصفية المحلية غير متاحة؛ ستبقى العناصر محجوبة عند تعذر التحقق</string>

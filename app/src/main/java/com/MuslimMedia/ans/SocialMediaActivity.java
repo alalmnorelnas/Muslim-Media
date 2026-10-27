@@ -257,6 +257,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.social_media);
 		initialize(_savedInstanceState);
+		AmiriFont.applyToActivity(this);
 		
 		if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2
 				&& (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED
@@ -397,9 +398,9 @@ public class SocialMediaActivity extends AppCompatActivity {
 		mahjoobModeGroup.check(getMahjoobModeButtonId(savedMahjoobMode));
 		mahjoobStrictSwitch.setChecked(MahjoobSettings.readStrict(sv));
 		nonet = new RequestNetwork(this);
-		d = new AlertDialog.Builder(this);
-		showImage = new AlertDialog.Builder(this);
-		firstdialog = new AlertDialog.Builder(this);
+		d = new AmiriAlertDialogBuilder(this);
+		showImage = new AmiriAlertDialogBuilder(this);
+		firstdialog = new AmiriAlertDialogBuilder(this);
 		fp.setType("*/*");
 		fp.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
 		his = getSharedPreferences("his", Activity.MODE_PRIVATE);
@@ -449,7 +450,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 				applyMahjoobModeChange(selectedMode);
 			}
 		});
-		mahjoobLicensesButton.setOnClickListener(view -> new AlertDialog.Builder(this)
+		mahjoobLicensesButton.setOnClickListener(view -> new AmiriAlertDialogBuilder(this)
 				.setTitle(R.string.mahjoob_licenses_title)
 				.setMessage(R.string.mahjoob_licenses_text)
 				.setPositiveButton(R.string.mahjoob_acknowledge, null)
@@ -2569,14 +2570,14 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 				        dm.enqueue(request);
 				
-				        Toast.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
+				        AmiriFont.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
 						registerDownloadReceiver(onComplete_imoo);
 				    }
 			
 			    BroadcastReceiver onComplete_imoo = new BroadcastReceiver() {
 				        @Override
 				        public void onReceive(Context context, Intent intent) {
-					            Toast.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
+					            AmiriFont.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
 					        }
 				    };
 		});
@@ -2594,14 +2595,14 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 				        dm.enqueue(request);
 				
-				        Toast.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
+				        AmiriFont.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
 						registerDownloadReceiver(onComplete_whats);
 				    }
 			
 			    BroadcastReceiver onComplete_whats = new BroadcastReceiver() {
 				        @Override
 				        public void onReceive(Context context, Intent intent) {
-					            Toast.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
+					            AmiriFont.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
 					        }
 				    };
 		});
@@ -2619,14 +2620,14 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 				        dm.enqueue(request);
 				
-				        Toast.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
+				        AmiriFont.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
 						registerDownloadReceiver(onComplete_twitt);
 				    }
 			
 			    BroadcastReceiver onComplete_twitt = new BroadcastReceiver() {
 				        @Override
 				        public void onReceive(Context context, Intent intent) {
-					            Toast.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
+					            AmiriFont.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
 					        }
 				    };
 		});
@@ -2644,14 +2645,14 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 				        dm.enqueue(request);
 				
-				        Toast.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
+				        AmiriFont.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
 						registerDownloadReceiver(onComplete_insta);
 				    }
 			
 			    BroadcastReceiver onComplete_insta = new BroadcastReceiver() {
 				        @Override
 				        public void onReceive(Context context, Intent intent) {
-					            Toast.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
+					            AmiriFont.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
 					        }
 				    };
 		});
@@ -2672,14 +2673,14 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 				        dm.enqueue(request);
 				
-				        Toast.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
+				        AmiriFont.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
 						registerDownloadReceiver(onComplete_Facebook);
 				    }
 			
 			    BroadcastReceiver onComplete_Facebook = new BroadcastReceiver() {
 				        @Override
 				        public void onReceive(Context context, Intent intent) {
-					            Toast.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
+					            AmiriFont.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
 					        }
 				    };
 		});
@@ -2700,14 +2701,14 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
 				        dm.enqueue(request);
 				
-				        Toast.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
+				        AmiriFont.makeText(getApplicationContext(), "Downloading...", Toast.LENGTH_SHORT).show();
 						registerDownloadReceiver(onComplete_Youtube);
 				    }
 			
 			    BroadcastReceiver onComplete_Youtube = new BroadcastReceiver() {
 				        @Override
 				        public void onReceive(Context context, Intent intent) {
-					            Toast.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
+					            AmiriFont.makeText(getApplicationContext(), "Downloading Complete", Toast.LENGTH_SHORT).show();
 					        }
 				    };
 		});
@@ -2724,7 +2725,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 				        String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
 				
 				        if (url.startsWith("blob")) {
-				            Toast.makeText(getApplicationContext(), "تنزيل blob غير متاح لأسباب أمنية", Toast.LENGTH_SHORT).show();
+				            AmiriFont.makeText(getApplicationContext(), "تنزيل blob غير متاح لأسباب أمنية", Toast.LENGTH_SHORT).show();
 				        } else if (isSafeDownloadUrl(url)) {
 					            // 👇 ده الجزء العادي للـ http/https
 					            DownloadManager.Request request =
@@ -2743,7 +2744,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					
 					            dm.enqueue(request);
 					
-					            Toast.makeText(getApplicationContext(),
+					            AmiriFont.makeText(getApplicationContext(),
 					                    "Downloading...", Toast.LENGTH_SHORT).show();
 					        }
 				    }
@@ -2766,7 +2767,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					uploadMessage = null; } uploadMessage = filePathCallback; Intent intent = fileChooserParams.createIntent(); try {
 					startActivityForResult(intent, REQUEST_SELECT_FILE);
 				} catch (ActivityNotFoundException e) {
-					uploadMessage = null; Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
+					uploadMessage = null; AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
 				return true; }
 			
 			//For Android 4.1 only
@@ -2796,7 +2797,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					uploadMessage = null; } uploadMessage = filePathCallback; Intent intent = fileChooserParams.createIntent(); try {
 					startActivityForResult(intent, REQUEST_SELECT_FILE);
 				} catch (ActivityNotFoundException e) {
-					uploadMessage = null; Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
+					uploadMessage = null; AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
 				return true; }
 			
 			//For Android 4.1 only
@@ -2826,7 +2827,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					uploadMessage = null; } uploadMessage = filePathCallback; Intent intent = fileChooserParams.createIntent(); try {
 					startActivityForResult(intent, REQUEST_SELECT_FILE);
 				} catch (ActivityNotFoundException e) {
-					uploadMessage = null; Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
+					uploadMessage = null; AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
 				return true; }
 			
 			//For Android 4.1 only
@@ -2856,7 +2857,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					uploadMessage = null; } uploadMessage = filePathCallback; Intent intent = fileChooserParams.createIntent(); try {
 					startActivityForResult(intent, REQUEST_SELECT_FILE);
 				} catch (ActivityNotFoundException e) {
-					uploadMessage = null; Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
+					uploadMessage = null; AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
 				return true; }
 			
 			//For Android 4.1 only
@@ -2886,7 +2887,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					uploadMessage = null; } uploadMessage = filePathCallback; Intent intent = fileChooserParams.createIntent(); try {
 					startActivityForResult(intent, REQUEST_SELECT_FILE);
 				} catch (ActivityNotFoundException e) {
-					uploadMessage = null; Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
+					uploadMessage = null; AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
 				return true; }
 			
 			//For Android 4.1 only
@@ -2916,7 +2917,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					uploadMessage = null; } uploadMessage = filePathCallback; Intent intent = fileChooserParams.createIntent(); try {
 					startActivityForResult(intent, REQUEST_SELECT_FILE);
 				} catch (ActivityNotFoundException e) {
-					uploadMessage = null; Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
+					uploadMessage = null; AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show(); return false; }
 				return true; }
 			
 			//For Android 4.1 only
@@ -2972,7 +2973,7 @@ public class SocialMediaActivity extends AppCompatActivity {
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(
+					            AmiriFont.makeText(
 					                    getApplicationContext(),
 					                    "Cannot Open File Chooser",
 					                    Toast.LENGTH_LONG
@@ -3274,7 +3275,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 			return;
 		}
 		MahjoobSettings.markAccuracyNoticeShown(preferences);
-		new AlertDialog.Builder(this)
+		new AmiriAlertDialogBuilder(this)
 				.setTitle(R.string.mahjoob_accuracy_title)
 				.setMessage(R.string.mahjoob_accuracy_text)
 				.setPositiveButton(R.string.mahjoob_acknowledge, null)
@@ -3417,7 +3418,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 		if (block) {
 			    webview1.stopLoading();
 			    webview1.goBack();
-			    Toast.makeText(getApplicationContext(), "تم حظر الرابط", Toast.LENGTH_SHORT).show();
+			    AmiriFont.makeText(getApplicationContext(), "تم حظر الرابط", Toast.LENGTH_SHORT).show();
 		}
 		
 	}
@@ -3639,7 +3640,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -3686,7 +3687,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -3733,7 +3734,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -3780,7 +3781,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -3827,7 +3828,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -3873,7 +3874,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -3920,7 +3921,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					            startActivityForResult(intent, REQUEST_SELECT_FILE);
 					        } catch (ActivityNotFoundException e) {
 					            uploadMessage = null;
-					            Toast.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
+					            AmiriFont.makeText(getApplicationContext(), "Cannot Open File Chooser", Toast.LENGTH_LONG).show();
 					            return false;
 					        }
 				        return true;
@@ -4042,7 +4043,7 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 	
 	@Deprecated
 	public void showMessage(String _s) {
-		Toast.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
+		AmiriFont.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
 	}
 	
 	@Deprecated

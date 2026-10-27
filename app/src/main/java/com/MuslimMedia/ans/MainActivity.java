@@ -39,102 +39,42 @@ import java.util.regex.*;
 import org.json.*;
 
 public class MainActivity extends AppCompatActivity {
-	
-	private Timer _timer = new Timer();
-	
-	private LinearLayout linear1;
-	private LinearLayout linear2;
-	private ProgressBar progressbar1;
-	private TextView textview2;
-	private TextView textview1;
-	
-	private TimerTask t;
-	private Intent i = new Intent();
-	private SharedPreferences sav_mode;
+	private Button startButton;
+	private SharedPreferences preferences;
 	
 	@Override
 	protected void onCreate(Bundle _savedInstanceState) {
 		super.onCreate(_savedInstanceState);
 		setContentView(R.layout.main);
-		initialize(_savedInstanceState);
-		initializeLogic();
-	}
-	
-	private void initialize(Bundle _savedInstanceState) {
-		linear1 = findViewById(R.id.linear1);
-		linear2 = findViewById(R.id.linear2);
-		progressbar1 = findViewById(R.id.progressbar1);
-		textview2 = findViewById(R.id.textview2);
-		textview1 = findViewById(R.id.textview1);
-		sav_mode = getSharedPreferences("svamode", Activity.MODE_PRIVATE);
-	}
-	
-	private void initializeLogic() {
-		t = new TimerTask() {
-			@Override
-			public void run() {
-				runOnUiThread(new Runnable() {
-					@Override
-					public void run() {
-						i.setClass(getApplicationContext(), SocialMediaActivity.class);
-						startActivity(i);
-					}
-				});
-			}
-		};
-		_timer.schedule(t, (int)(3000));
-		if (!sav_mode.getString("mode", "").equals("")) {
-			if (sav_mode.getString("mode", "").equals("day")) {
-				_style_day();
-			}
-			else {
-				_style();
-			}
+		AmiriFont.applyToActivity(this);
+		preferences = getSharedPreferences("svamode", Activity.MODE_PRIVATE);
+		if (!preferences.contains("mode")) {
+			preferences.edit().putString("mode", "night").apply();
 		}
-		else {
-			sav_mode.edit().putString("mode", "night").commit();
+		if (preferences.getBoolean("welcome_complete", false)) {
+			openBrowser();
+			return;
 		}
+		startButton = findViewById(R.id.start_button);
+		View content = findViewById(R.id.welcome_content);
+		content.setAlpha(0f);
+		content.animate().alpha(1f).setDuration(450L).start();
+		startButton.setOnClickListener(view -> {
+			preferences.edit().putBoolean("welcome_complete", true).apply();
+			startButton.setEnabled(false);
+			openBrowser();
+		});
 	}
 
-	@Override
-	protected void onDestroy() {
-		if (t != null) {
-			t.cancel();
-		}
-		if (_timer != null) {
-			_timer.cancel();
-		}
-		super.onDestroy();
-	}
-	
-	public void _style() {
-		linear1.setBackgroundColor(0xFF000000);
-		textview1.setBackgroundResource(R.drawable.btn_ripple);
-		textview2.setBackgroundResource(R.drawable.btn_ripple);
-		textview1.setTextColor(0xFFFFFFFF);
-		textview2.setTextColor(0xFFFFFFFF);
-		textview1.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/amiri.ttf"), 0);
-		textview2.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/amiri.ttf"), 0);
-	}
-	
-	
-	public void _style_day() {
-		linear1.setBackgroundColor(0xFFFFFFFF);
-		textview1.setBackgroundResource(R.drawable.btn_ripple_day);
-		textview2.setBackgroundResource(R.drawable.btn_ripple_day);
-		
-		// النصوص النهارية (غامق)
-		int dayText = 0xFF212121;
-		textview1.setTextColor(dayText);
-		textview2.setTextColor(dayText);
-		textview1.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/amiri.ttf"), 0);
-		textview2.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/amiri.ttf"), 0);
+	private void openBrowser() {
+		startActivity(new Intent(this, SocialMediaActivity.class));
+		finish();
 	}
 	
 	
 	@Deprecated
 	public void showMessage(String _s) {
-		Toast.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
+		AmiriFont.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
 	}
 	
 	@Deprecated

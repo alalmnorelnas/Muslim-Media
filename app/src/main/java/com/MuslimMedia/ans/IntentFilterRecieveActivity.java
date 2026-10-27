@@ -43,6 +43,7 @@ public class IntentFilterRecieveActivity extends AppCompatActivity {
 		setContentView(R.layout.intent_filter_recieve);
 		initialize(_savedInstanceState);
 		initializeLogic();
+		AmiriFont.applyToActivity(this);
 	}
 	
 	private void initialize(Bundle _savedInstanceState) {
@@ -81,7 +82,7 @@ public class IntentFilterRecieveActivity extends AppCompatActivity {
 	
 	@Deprecated
 	public void showMessage(String _s) {
-		Toast.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
+		AmiriFont.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
 	}
 	
 	@Deprecated

@@ -4,4 +4,9 @@
 	<color name="colorAccent">#5865F2</color>
 	<color name="colorControlHighlight">#008DCD</color>
 	<color name="colorControlNormal">#57BEEE</color>
+	<color name="welcome_background">#F1F6F1</color>
+	<color name="welcome_ink">#173B34</color>
+	<color name="welcome_muted">#526B64</color>
+	<color name="welcome_green">#16715B</color>
+	<color name="welcome_mint">#BDE7C8</color>
 </resources>

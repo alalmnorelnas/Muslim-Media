@@ -81,6 +81,7 @@ public class OfflineSbhaActivity extends AppCompatActivity {
 		setContentView(R.layout.offline_sbha);
 		initialize(_savedInstanceState);
 		initializeLogic();
+		AmiriFont.applyToActivity(this);
 	}
 	
 	private void initialize(Bundle _savedInstanceState) {
@@ -102,7 +103,7 @@ public class OfflineSbhaActivity extends AppCompatActivity {
 		count = findViewById(R.id.count);
 		save = getSharedPreferences("save", Activity.MODE_PRIVATE);
 		vib = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-		auto_sbha = new AlertDialog.Builder(this);
+		auto_sbha = new AmiriAlertDialogBuilder(this);
 		check_connect = new RequestNetwork(this);
 		
 		imageview1.setOnClickListener(new View.OnClickListener() {
@@ -197,7 +198,7 @@ public class OfflineSbhaActivity extends AppCompatActivity {
 		_Animator(reset, "elevation", 10, 0);
 		_ClickAnimation(count);
 		_Animator(count, "elevation", 10, 0);
-		number.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/digtal.ttf"), 0);
+		number.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/amiri.ttf"), 0);
 		textview2.setTypeface(Typeface.createFromAsset(getAssets(),"fonts/amiri.ttf"), 0);
 		_ICC(imageview2, "#FFFFFF", "#FFFFFF");
 		chect_connect = new TimerTask() {
@@ -372,7 +373,7 @@ public class OfflineSbhaActivity extends AppCompatActivity {
 	
 	@Deprecated
 	public void showMessage(String _s) {
-		Toast.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
+		AmiriFont.makeText(getApplicationContext(), _s, Toast.LENGTH_SHORT).show();
 	}
 	
 	@Deprecated

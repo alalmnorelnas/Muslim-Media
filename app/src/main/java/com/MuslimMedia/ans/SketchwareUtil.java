@@ -18,7 +18,7 @@ public class SketchwareUtil {
     public static int BOTTOM = 3;
 
     public static void CustomToast(Context _context, String _message, int _textColor, int _textSize, int _bgColor, int _radius, int _gravity) {
-        Toast _toast = Toast.makeText(_context, _message, Toast.LENGTH_SHORT);
+        Toast _toast = AmiriFont.makeText(_context, _message, Toast.LENGTH_SHORT);
         View _view = _toast.getView();
         TextView _textView = _view.findViewById(android.R.id.message);
         _textView.setTextSize(_textSize);
@@ -49,7 +49,7 @@ public class SketchwareUtil {
     }
 
     public static void CustomToastWithIcon(Context _context, String _message, int _textColor, int _textSize, int _bgColor, int _radius, int _gravity, int _icon) {
-        Toast _toast = Toast.makeText(_context, _message, Toast.LENGTH_SHORT);
+        Toast _toast = AmiriFont.makeText(_context, _message, Toast.LENGTH_SHORT);
         View _view = _toast.getView();
         TextView _textView = (TextView) _view.findViewById(android.R.id.message);
         _textView.setTextSize(_textSize);
@@ -117,7 +117,7 @@ public class SketchwareUtil {
             _intent.putExtra("return-data", false);
             _activity.startActivityForResult(_intent, _requestCode);
         } catch (ActivityNotFoundException _e) {
-            Toast.makeText(_activity, "Your device doesn't support the crop action!", Toast.LENGTH_SHORT).show();
+            AmiriFont.makeText(_activity, "Your device doesn't support the crop action!", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -154,7 +154,7 @@ public class SketchwareUtil {
     }
     
     public static void showMessage(Context _context, String _s) {
-        Toast.makeText(_context, _s, Toast.LENGTH_SHORT).show();
+        AmiriFont.makeText(_context, _s, Toast.LENGTH_SHORT).show();
     }
 
     public static int getLocationX(View _view) {
