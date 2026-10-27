@@ -3,7 +3,7 @@
 	<string name="mahjoob_status_loading">جارٍ تهيئة التصفية المحلية...</string>
 	<string name="mahjoob_status_ready">التصفية المحلية جاهزة</string>
 	<string name="mahjoob_status_unavailable">التصفية المحلية غير متاحة؛ ستبقى العناصر محجوبة عند تعذر التحقق</string>
-	<string name="mahjoob_status_update_webview">حدّث Android System WebView لتفعيل التصفية؛ لن يتم تحميل المحتوى حتى يتوفر الدعم</string>
+	<string name="mahjoob_status_update_webview">حدّث Android System WebView لتفعيل تصفية الفيديو؛ سيظل الموقع متاحًا وستبقى الصور خاضعة للتصفية</string>
 	<string name="mahjoob_settings_title">التصفية الذكية للصور والفيديو</string>
 	<string name="mahjoob_mode_off">إيقاف</string>
 	<string name="mahjoob_mode_women">حجب النساء</string>

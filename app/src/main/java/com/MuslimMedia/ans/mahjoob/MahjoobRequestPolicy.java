@@ -25,14 +25,24 @@ public final class MahjoobRequestPolicy {
 		return url + "|" + normalizeMode(mode);
 	}
 
-	public static boolean isCandidateImageRequest(String method, Map<String, String> headers, String url) {
-		if (!"GET".equalsIgnoreCase(method)) {
+	public static boolean isCandidateImageRequest(String method, Map<String, String> headers, String url,
+			boolean isMainFrame) {
+		if (isMainFrame || !"GET".equalsIgnoreCase(method)) {
 			return false;
 		}
 		if (headers != null) {
 			for (Map.Entry<String, String> header : headers.entrySet()) {
-				if ("accept".equalsIgnoreCase(header.getKey()) && header.getValue() != null
-						&& header.getValue().toLowerCase(Locale.US).contains("image/")) {
+				if (!"accept".equalsIgnoreCase(header.getKey()) || header.getValue() == null) {
+					continue;
+				}
+				String accept = header.getValue().toLowerCase(Locale.US);
+				if (accept.contains("text/html") || accept.contains("application/xhtml+xml")
+						|| accept.contains("text/css") || accept.contains("javascript")
+						|| accept.contains("application/json") || accept.contains("text/plain")
+						|| accept.contains("font/")) {
+					return false;
+				}
+				if (accept.matches("(?s).*\\bimage/[a-z0-9.+*-]+(?:\\s*;[^,]*)?(?:\\s*,.*)?")) {
 					return true;
 				}
 			}

@@ -14,13 +14,24 @@ public class MahjoobRequestPolicyTest {
 	@Test
 	public void detectsImageRequestsByAcceptHeaderOrExtension() {
 		Map<String, String> headers = new HashMap<>();
-		headers.put("Accept", "text/html, image/avif, image/webp");
-		assertTrue(MahjoobRequestPolicy.isCandidateImageRequest("GET", headers, "https://example.test/item"));
+		headers.put("Accept", "image/avif,image/webp,image/apng,*/*;q=0.8");
+		assertTrue(MahjoobRequestPolicy.isCandidateImageRequest("GET", headers, "https://example.test/item", false));
 		assertTrue(MahjoobRequestPolicy.isCandidateImageRequest("GET", Collections.emptyMap(),
-				"https://example.test/photo.JPEG?size=large"));
-		assertFalse(MahjoobRequestPolicy.isCandidateImageRequest("POST", headers, "https://example.test/photo.jpg"));
+				"https://example.test/photo.JPEG?size=large", false));
+		assertFalse(MahjoobRequestPolicy.isCandidateImageRequest("GET", headers,
+				"https://example.test/document", true));
+		assertFalse(MahjoobRequestPolicy.isCandidateImageRequest("POST", headers,
+				"https://example.test/photo.jpg", false));
 		assertFalse(MahjoobRequestPolicy.isCandidateImageRequest("GET", Collections.emptyMap(),
-				"https://example.test/page"));
+				"https://example.test/page", false));
+	}
+
+	@Test
+	public void doesNotMisclassifyHtmlAcceptHeadersAsImages() {
+		Map<String, String> headers = new HashMap<>();
+		headers.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
+		assertFalse(MahjoobRequestPolicy.isCandidateImageRequest("GET", headers,
+				"https://example.test/home", false));
 	}
 
 	@Test

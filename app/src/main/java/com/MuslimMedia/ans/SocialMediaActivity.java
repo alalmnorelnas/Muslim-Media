@@ -3202,20 +3202,16 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 			mahjoobStateListener = null;
 		};
 		manager.initialize(mode.targetGender(), MahjoobSettings.readStrict(preferences), mahjoobStateListener);
+		mahjoobImageInterceptor = new MahjoobImageInterceptor(preferences, manager);
 		if (!MahjoobVideoBridge.areRequiredFeaturesAvailable()) {
 			closeMahjoobVideoBridge();
-			blockMahjoobNetworkLoads();
-			mahjoobImageInterceptor = null;
 			mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
 			return;
 		}
-		allowMahjoobNetworkLoads();
 		if (mahjoobVideoBridge == null) {
 			try {
 				mahjoobVideoBridge = new MahjoobVideoBridge(getApplicationContext(), manager);
 			} catch (IOException failure) {
-				blockMahjoobNetworkLoads();
-				mahjoobImageInterceptor = null;
 				mahjoobStatus.setText(R.string.mahjoob_status_unavailable);
 				return;
 			}
@@ -3227,14 +3223,11 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 					&& mahjoobVideoBridge.install(imoo)
 					&& mahjoobVideoBridge.install(Facebook);
 			if (!videoInstalled) {
-				blockMahjoobNetworkLoads();
 				closeMahjoobVideoBridge();
-				mahjoobImageInterceptor = null;
 				mahjoobStatus.setText(R.string.mahjoob_status_update_webview);
 				return;
 			}
 		}
-		mahjoobImageInterceptor = new MahjoobImageInterceptor(preferences, manager);
 		coverOpenVideosForRecheck();
 	}
 
@@ -3316,14 +3309,6 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 		}
 	}
 
-	private void blockMahjoobNetworkLoads() {
-		for (WebView webView : getMahjoobWebViews()) {
-			if (webView != null) {
-				webView.getSettings().setBlockNetworkLoads(true);
-			}
-		}
-	}
-
 	private void allowMahjoobNetworkLoads() {
 		for (WebView webView : getMahjoobWebViews()) {
 			if (webView != null) {
@@ -3359,6 +3344,15 @@ DO NOT FORGET TO ADD THE PERMISSION TO THE MANIFEST TO RUN THIS APP, YOU CAN USE
 				+ "setTimeout(function(){t.classList.remove('muslim-media-clear');},5000);}} ,true);}"
 				+ "})()";
 		webView.evaluateJavascript(script, null);
+		boolean coverVideos = MahjoobSettings.readMode(
+				getSharedPreferences("sv", Activity.MODE_PRIVATE)) != MahjoobSettings.Mode.OFF
+				&& mahjoobVideoBridge == null;
+		String videoFallback = "(function(){var id='mahjoob_video_fallback';var old=document.getElementById(id);if(old)old.remove();"
+				+ (coverVideos
+						? "var s=document.createElement('style');s.id=id;s.textContent='video{visibility:hidden!important;}';(document.head||document.documentElement).appendChild(s);"
+						: "")
+				+ "})()";
+		webView.evaluateJavascript(videoFallback, null);
 	}
 	
 	

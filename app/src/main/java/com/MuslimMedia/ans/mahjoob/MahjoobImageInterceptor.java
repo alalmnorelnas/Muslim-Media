@@ -11,8 +11,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 
-import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import dev.mahjoob.core.Decision;
 import okhttp3.Headers;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -33,17 +34,16 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-import dev.mahjoob.core.Decision;
-
 public final class MahjoobImageInterceptor {
 	private static final int MAX_BITMAP_SIDE = 1280;
 	private static final int MIN_CLASSIFY_SIDE = 40;
 	private static final int MAX_REDIRECTS = 10;
 	private static final long NETWORK_TIMEOUT_MS = 10000;
 	private static final long GUARD_READY_TIMEOUT_MS = 15000;
-	private static final long SHARED_RESULT_TIMEOUT_MS = 26000;
+	private static final long IMAGE_REQUEST_TIMEOUT_MS = 10000;
 	private static final int DECISION_CACHE_SIZE = 500;
 	private static final byte[] PLACEHOLDER_PNG = createPlaceholder();
+	private static final MahjoobDiagnostics diagnostics = MahjoobDiagnostics.getInstance();
 
 	private final MahjoobManager manager;
 	private final android.content.SharedPreferences preferences;
@@ -70,139 +70,138 @@ public final class MahjoobImageInterceptor {
 	}
 
 	public WebResourceResponse intercept(WebView view, WebResourceRequest request) {
-		if (MahjoobSettings.readMode(preferences) == MahjoobSettings.Mode.OFF
-				|| request == null
-				|| !"GET".equalsIgnoreCase(request.getMethod())
-				|| !MahjoobRequestPolicy.isCandidateImageRequest(request.getMethod(), request.getRequestHeaders(),
-						request.getUrl().toString())) {
+		if (MahjoobSettings.readMode(preferences) == MahjoobSettings.Mode.OFF || request == null || request.getUrl() == null) {
+			return null;
+		}
+		String method = request.getMethod();
+		String url = request.getUrl().toString();
+		if (!"GET".equalsIgnoreCase(method)
+				|| !MahjoobRequestPolicy.isCandidateImageRequest(method, request.getRequestHeaders(), url,
+					request.isForMainFrame())) {
 			return null;
 		}
 		if (Looper.myLooper() == Looper.getMainLooper()) {
+			diagnostics.requestIntercepted();
+			diagnostics.handledAsImage();
+			diagnostics.recordError("main-thread-image-request", null);
+			diagnostics.imageBlocked();
 			return blockedResponse();
 		}
 
-		String url = request.getUrl().toString();
-		HttpUrl parsedUrl = HttpUrl.parse(url);
-		if (parsedUrl == null || !("http".equals(parsedUrl.scheme()) || "https".equals(parsedUrl.scheme()))) {
-			return blockedResponse();
-		}
-
-		MahjoobSettings.Mode mode = MahjoobSettings.readMode(preferences);
-		String cacheKey = MahjoobRequestPolicy.cacheKey(url, mode.preferenceValue());
+		String cacheKey = MahjoobRequestPolicy.cacheKey(url, MahjoobSettings.readMode(preferences).preferenceValue());
 		ImageResult result = getOrCreateResult(cacheKey, request);
 		if (result == null) {
+			return null;
+		}
+		if (result.blocked) {
+			diagnostics.imageBlocked();
 			return blockedResponse();
 		}
-		if (result.bytes == null) {
-			return blockedResponse();
-		}
-		return result.blocked
-				? blockedResponse()
-				: new WebResourceResponse(result.mimeType, result.encoding, result.statusCode,
-					result.reasonPhrase, result.responseHeaders, new ByteArrayInputStream(result.bytes));
+		return result.toWebResourceResponse();
 	}
 
 	private ImageResult getOrCreateResult(String key, WebResourceRequest request) {
-		CompletableFuture<ImageResult> created = new CompletableFuture<>();
-		CompletableFuture<ImageResult> existing = inFlight.putIfAbsent(key, created);
-		if (existing == null) {
-			try {
-				ImageResult result = fetchAndClassify(request, key);
-				created.complete(result);
-				return result;
-			} catch (RuntimeException | IOException | OutOfMemoryError failure) {
-				created.complete(ImageResult.blocked());
-				return ImageResult.blocked();
-			} finally {
-				inFlight.remove(key, created);
+		CompletableFuture<ImageResult> existingFuture = inFlight.get(key);
+		if (existingFuture == null) {
+			CompletableFuture<ImageResult> created = new CompletableFuture<>();
+			CompletableFuture<ImageResult> previous = inFlight.putIfAbsent(key, created);
+			if (previous == null) {
+				try {
+					ImageResult result = fetchAndClassify(key, request);
+					created.complete(result);
+					return result;
+				} catch (RuntimeException | IOException | OutOfMemoryError failure) {
+					diagnostics.recordError("image-processing", failure);
+					ImageResult blocked = ImageResult.blocked();
+					created.complete(blocked);
+					return blocked;
+				} finally {
+					inFlight.remove(key, created);
+				}
 			}
+			existingFuture = previous;
 		}
 		try {
-			return existing.get(SHARED_RESULT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+			return existingFuture.get(IMAGE_REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 		} catch (InterruptedException exception) {
 			Thread.currentThread().interrupt();
+			diagnostics.recordError("interrupted", exception);
 			return ImageResult.blocked();
-		} catch (ExecutionException | TimeoutException exception) {
+		} catch (ExecutionException exception) {
+			diagnostics.recordError("image-worker", exception.getCause() == null ? exception : exception.getCause());
+			return ImageResult.blocked();
+		} catch (TimeoutException exception) {
+			diagnostics.timeout();
 			return ImageResult.blocked();
 		}
 	}
 
-	private ImageResult fetchAndClassify(WebResourceRequest request, String cacheKey) throws IOException {
+	private ImageResult fetchAndClassify(String key, WebResourceRequest request) throws IOException {
+		diagnostics.requestIntercepted();
+		String url = request.getUrl().toString();
 		Map<String, String> requestHeaders = request.getRequestHeaders();
 		String requestCookie = null;
 		if (requestHeaders != null) {
-			for (Map.Entry<String, String> header : requestHeaders.entrySet()) {
-				if (header.getKey() == null || header.getValue() == null) {
+			for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
+				if (entry.getKey() == null || entry.getValue() == null) {
 					continue;
 				}
-				if ("cookie".equalsIgnoreCase(header.getKey())) {
-					requestCookie = header.getValue();
+				if ("cookie".equalsIgnoreCase(entry.getKey())) {
+					requestCookie = entry.getValue();
 				}
 			}
 		}
 		try (Response response = fetchFollowingRedirects(request, requestHeaders, requestCookie)) {
 			ResponseBody body = response.body();
-			if (!response.isSuccessful() || body == null) {
-				return ImageResult.blocked();
+			if (body == null) {
+				diagnostics.passedThrough();
+				return null;
 			}
 			byte[] bytes = readBounded(body);
 			String mimeType = response.header("Content-Type");
 			if (mimeType == null && body.contentType() != null) {
 				mimeType = body.contentType().toString();
 			}
-			if (mimeType == null) {
-				return ImageResult.blocked();
+			if (mimeType == null || !mimeType.toLowerCase(Locale.US).contains("image")) {
+				diagnostics.passedThrough();
+				return null;
 			}
-			mimeType = mimeType.split(";", 2)[0].trim().toLowerCase(Locale.US);
-			if (!mimeType.startsWith("image/")) {
-				return ImageResult.blocked();
-			}
-
-			Map<String, String> responseHeaders = copyResponseHeaders(response.headers());
-			if ("image/svg+xml".equals(mimeType)) {
-				return ImageResult.allowed(bytes, mimeType, response, responseHeaders);
-			}
-
-			Boolean cachedDecision = getCachedDecision(cacheKey);
-			if (cachedDecision != null) {
-				return ImageResult.fromDecision(cachedDecision, bytes, mimeType, response, responseHeaders);
-			}
-
 			Bitmap bitmap = decodeForClassification(bytes);
 			if (bitmap == null) {
-				cacheDecision(cacheKey, true);
-				return ImageResult.blockedImage(bytes, mimeType, response, responseHeaders);
+				diagnostics.imageAllowed();
+				cacheDecision(key, false);
+				return ImageResult.allowed(bytes, mimeType, response, copyResponseHeaders(response.headers()));
 			}
-			boolean blocked;
-			boolean shouldCache = true;
 			try {
+				boolean blocked;
 				if (bitmap.getWidth() < MIN_CLASSIFY_SIDE || bitmap.getHeight() < MIN_CLASSIFY_SIDE) {
 					blocked = false;
 				} else if (!manager.awaitReady(GUARD_READY_TIMEOUT_MS)) {
 					blocked = true;
-					shouldCache = false;
 				} else {
-					Decision decision = manager.check(bitmap, cacheKey);
-					if (decision == null) {
-						blocked = true;
-						shouldCache = false;
-					} else {
-						blocked = decision.isBlocked();
-					}
+					Decision decision = manager.check(bitmap, key);
+					blocked = decision == null || decision.isBlocked();
 				}
+				if (blocked) {
+					diagnostics.imageBlocked();
+					cacheDecision(key, true);
+					return ImageResult.blockedImage(bytes, mimeType, response, copyResponseHeaders(response.headers()));
+				}
+				diagnostics.imageAllowed();
+				cacheDecision(key, false);
+				return ImageResult.allowed(bytes, mimeType, response, copyResponseHeaders(response.headers()));
 			} finally {
 				bitmap.recycle();
 			}
-			if (shouldCache) {
-				cacheDecision(cacheKey, blocked);
-			}
-			return ImageResult.fromDecision(blocked, bytes, mimeType, response, responseHeaders);
 		}
 	}
 
 	private Response fetchFollowingRedirects(WebResourceRequest request, Map<String, String> requestHeaders,
 			String initialRequestCookie) throws IOException {
 		HttpUrl initialUrl = HttpUrl.parse(request.getUrl().toString());
+		if (initialUrl == null) {
+			throw new IOException("Image request URL was invalid");
+		}
 		HttpUrl currentUrl = initialUrl;
 		boolean preserveAuthorization = true;
 		long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(NETWORK_TIMEOUT_MS);
@@ -223,7 +222,7 @@ public final class MahjoobImageInterceptor {
 							|| "content-length".equalsIgnoreCase(header.getKey())
 							|| "accept-encoding".equalsIgnoreCase(header.getKey())
 							|| (!preserveAuthorization && ("authorization".equalsIgnoreCase(header.getKey())
-							|| "proxy-authorization".equalsIgnoreCase(header.getKey())))) {
+									|| "proxy-authorization".equalsIgnoreCase(header.getKey())))) {
 						continue;
 					}
 					requestBuilder.header(header.getKey(), header.getValue());
@@ -236,7 +235,6 @@ public final class MahjoobImageInterceptor {
 			if (cookie != null && !cookie.isEmpty()) {
 				requestBuilder.header("Cookie", cookie);
 			}
-
 			OkHttpClient timedClient = httpClient.newBuilder()
 					.callTimeout(remainingMs, TimeUnit.MILLISECONDS)
 					.build();
@@ -254,6 +252,18 @@ public final class MahjoobImageInterceptor {
 			currentUrl = nextUrl;
 		}
 		throw new IOException("Too many image redirects");
+	}
+
+	private Boolean getCachedDecision(String key) {
+		synchronized (cacheLock) {
+			return decisions.get(key);
+		}
+	}
+
+	private void cacheDecision(String key, boolean blocked) {
+		synchronized (cacheLock) {
+			decisions.put(key, blocked);
+		}
 	}
 
 	private static boolean isSameOrigin(HttpUrl first, HttpUrl second) {
@@ -304,18 +314,6 @@ public final class MahjoobImageInterceptor {
 			options.inSampleSize *= 2;
 		}
 		return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, options);
-	}
-
-	private Boolean getCachedDecision(String key) {
-		synchronized (cacheLock) {
-			return decisions.get(key);
-		}
-	}
-
-	private void cacheDecision(String key, boolean blocked) {
-		synchronized (cacheLock) {
-			decisions.put(key, blocked);
-		}
 	}
 
 	private static Map<String, String> copyResponseHeaders(Headers headers) {
@@ -398,8 +396,24 @@ public final class MahjoobImageInterceptor {
 			if (reasonPhrase == null || reasonPhrase.isEmpty()) {
 				reasonPhrase = "OK";
 			}
-			return new ImageResult(blocked, bytes, mimeType, encoding, response.code(),
-				reasonPhrase, headers);
+			return new ImageResult(blocked, bytes, mimeType, encoding, response.code(), reasonPhrase, headers);
+		}
+
+		WebResourceResponse toWebResourceResponse() {
+			Map<String, String> headers = new LinkedHashMap<>();
+			if (responseHeaders != null) {
+				headers.putAll(responseHeaders);
+			}
+			headers.putIfAbsent("Cache-Control", "no-store");
+			if (blocked) {
+				return new WebResourceResponse("image/png", "UTF-8", 200, "OK", headers,
+						new ByteArrayInputStream(PLACEHOLDER_PNG));
+			}
+			String responseMimeType = mimeType == null ? "application/octet-stream" : mimeType;
+			String responseEncoding = encoding == null ? "UTF-8" : encoding;
+			byte[] responseBytes = bytes == null ? new byte[0] : bytes;
+			return new WebResourceResponse(responseMimeType, responseEncoding, statusCode, reasonPhrase,
+					headers, new ByteArrayInputStream(responseBytes));
 		}
 	}
 }

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import dev.mahjoob.android.MahjoobGuard;
 import dev.mahjoob.android.MahjoobOptions;
@@ -18,6 +19,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public final class MahjoobManager {
+	private static final MahjoobDiagnostics diagnostics = MahjoobDiagnostics.getInstance();
 	public enum State {
 		NEW,
 		LOADING,
@@ -86,6 +88,7 @@ public final class MahjoobManager {
 				state = State.LOADING;
 				readiness.countDown();
 				readiness = new CountDownLatch(1);
+				diagnostics.initializationStarted();
 				TargetGender selectedTarget = target;
 				boolean strictMode = strict;
 				long version = ++configurationVersion;
@@ -95,6 +98,8 @@ public final class MahjoobManager {
 					initializationError = failure;
 					state = State.FAILED;
 					readiness.countDown();
+					diagnostics.recordError("initialization-queue", failure);
+					diagnostics.initializationFinished();
 					immediateState = State.FAILED;
 				}
 			}
@@ -139,10 +144,15 @@ public final class MahjoobManager {
 			if (activeGuard == null) {
 				return null;
 			}
-			Decision decision = cacheKey == null
-					? activeGuard.check(bitmap)
-					: activeGuard.check(bitmap, cacheKey);
-			return state == State.READY && guard == activeGuard ? decision : null;
+			long startTime = SystemClock.elapsedRealtime();
+			try {
+				Decision decision = cacheKey == null
+						? activeGuard.check(bitmap)
+						: activeGuard.check(bitmap, cacheKey);
+				return state == State.READY && guard == activeGuard ? decision : null;
+			} finally {
+				diagnostics.inferenceFinished(SystemClock.elapsedRealtime() - startTime);
+			}
 		}
 	}
 
@@ -158,6 +168,7 @@ public final class MahjoobManager {
 		MahjoobGuard loadedGuard = null;
 		Throwable error = null;
 		State finalState = null;
+		boolean initializationCompleted = false;
 		synchronized (inferenceLock) {
 			MahjoobGuard oldGuard;
 			synchronized (lock) {
@@ -174,13 +185,14 @@ public final class MahjoobManager {
 				MahjoobOptions options = new MahjoobOptions.Builder(target)
 						.strict(strict)
 						.blockThreshold(0.2)
-						.timeoutMs(15000)
+						.timeoutMs(4000)
 						.maxSide(1280)
 						.assetDir("mahjoob")
 						.build();
 				loadedGuard = MahjoobGuard.create(appContext, options);
 			} catch (RuntimeException | LinkageError | OutOfMemoryError failure) {
 				error = failure;
+				diagnostics.recordError("initialization", failure);
 			}
 			synchronized (lock) {
 				if (state == State.CLOSED || version != configurationVersion) {
@@ -194,7 +206,11 @@ public final class MahjoobManager {
 				state = loadedGuard == null ? State.FAILED : State.READY;
 				finalState = state;
 				readiness.countDown();
+				initializationCompleted = true;
 			}
+		}
+		if (initializationCompleted) {
+			diagnostics.initializationFinished();
 		}
 		notifyListener(finalState);
 	}
